@@ -15,7 +15,7 @@ public class HistogramBuilder {
 
     public static void main(String[] args) {
         // Директорія для аналізу
-        File directory = new File("/Downloads");
+        File directory = new File("/home/bohdan");
 
         // Отримання розподілу розмірів файлів
         Map<Long, Integer> sizeDistribution = getFileSizeDistribution(directory);
@@ -47,7 +47,10 @@ public class HistogramBuilder {
         if (file.isDirectory()) {
             // Рекурсивний виклик для кожної підпапки
             File[] subFiles = file.listFiles();
+            if(subFiles == null) return;
             for (File subFile : subFiles) {
+                System.out.println(subFile.getName()+ " ");
+                if(subFile == null) continue;
                 analyzeFiles(subFile, sizeDistribution);
             }
         } else {
@@ -78,8 +81,9 @@ public class HistogramBuilder {
                 PlotOrientation.VERTICAL,  // Орієнтація графіку
                 true,                   // Легенда
                 true,                   // Відображення назв категорій на вісі X
-                false                   // Відображення значень на бічних панелях
+                true                   // Відображення значень на бічних панелях
         );
+
         return chart;
     }
 
