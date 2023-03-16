@@ -4,31 +4,40 @@ import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartFrame;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
-import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.category.DefaultCategoryDataset;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
+
+
 
 public class HistogramBuilder {
 
     public static void main(String[] args) {
-        // Директорія для аналізу
         File directory = new File("/home/bohdan");
+        Map<Long, Integer> sizeDistribution = new TreeMap<>();
+        DefaultCategoryDataset dataSet = new DefaultCategoryDataset();
 
-        // Отримання розподілу розмірів файлів
-        Map<Long, Integer> sizeDistribution = getFileSizeDistribution(directory);
+        ForkJoinPool executor = new ForkJoinPool(12);
+        ForkJoinTask<?> task = executor.submit(() -> analyzeFiles(directory, sizeDistribution));
+        task.join();
+        ForkJoinTask<?> task2 = executor.submit(() -> configurateDataSet(dataSet, sizeDistribution));
+        task2.join();
 
-        // Побудова гістограми
-        JFreeChart chart = buildHistogram(sizeDistribution);
+        JFreeChart chart = ChartFactory.createBarChart(
+                "File Size Histogram",
+                "File Size (bytes)",
+                "Percent",
+                dataSet
+        );
 
-        // Відображення гістограми в окремому вікні
         ChartFrame frame = new ChartFrame("File Size Histogram", chart);
         frame.pack();
         frame.setVisible(true);
 
-        // Збереження гістограми в файл
         try {
             ChartUtils.saveChartAsPNG(new File("histogram.png"), chart, 800, 600);
         } catch (Exception e) {
@@ -36,55 +45,32 @@ public class HistogramBuilder {
         }
     }
 
-    private static Map<Long, Integer> getFileSizeDistribution(File directory) {
-        Map<Long, Integer> sizeDistribution = new HashMap<>();
-        // Рекурсивний аналіз розміру файлів у директорії
-        analyzeFiles(directory, sizeDistribution);
-        return sizeDistribution;
-    }
-
     private static void analyzeFiles(File file, Map<Long, Integer> sizeDistribution) {
         if (file.isDirectory()) {
-            // Рекурсивний виклик для кожної підпапки
             File[] subFiles = file.listFiles();
-            if(subFiles == null) return;
+            if (subFiles == null) return;
+
             for (File subFile : subFiles) {
-                System.out.println(subFile.getName()+ " ");
-                if(subFile == null) continue;
+                if (subFile == null) continue;
                 analyzeFiles(subFile, sizeDistribution);
             }
         } else {
-            // Додавання розміру файлу до гістограми
             long fileSize = file.length();
-            if (sizeDistribution.containsKey(fileSize)) {
-                int count = sizeDistribution.get(fileSize) + 1;
-                sizeDistribution.put(fileSize, count);
-            } else {
-                sizeDistribution.put(fileSize, 1);
-            }
+            sizeDistribution.compute(fileSize, (key, value) -> value == null ? 1 : value + 1);
         }
     }
 
-    private static JFreeChart buildHistogram(Map<Long, Integer> sizeDistribution) {
-        System.out.println(sizeDistribution);
-        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+    private static void configurateDataSet(DefaultCategoryDataset dataSet, Map<Long, Integer> sizeDistribution)
+    {
+        Integer sum = sizeDistribution.values().stream().parallel().mapToInt(Integer::intValue).sum();
+
         for (Long fileSize : sizeDistribution.keySet()) {
-            int count = sizeDistribution.get(fileSize);
-            dataset.addValue(count, "File Size", String.valueOf(fileSize));
+            Integer count = sizeDistribution.get(fileSize);
+            double v = Double.valueOf(count) / Double.valueOf(sum);
+            dataSet.setValue(v *100, "File Size", String.valueOf(fileSize));
         }
-
-        JFreeChart chart = ChartFactory.createBarChart(
-                "File Size Histogram",  // Головний заголовок
-                "File Size (bytes)",    // Вісь X
-                "Count",                // Вісь Y
-                dataset,                // Дані для гра
-                PlotOrientation.VERTICAL,  // Орієнтація графіку
-                true,                   // Легенда
-                true,                   // Відображення назв категорій на вісі X
-                true                   // Відображення значень на бічних панелях
-        );
-
-        return chart;
     }
+
+
 
 }
