@@ -28,7 +28,6 @@ public class HistogramBuilder {
         ForkJoinTask<?> task2 = executor.submit(() -> configurateDataSet(dataSet, dataSetInterval, sizeDistribution));
         task2.join();
 
-        System.out.println(sizeDistribution.lastEntry().getKey());
 
         JFreeChart chart = ChartFactory.createBarChart(
             "File Size Histogram",
@@ -50,13 +49,11 @@ public class HistogramBuilder {
 
         ChartFrame frame2 = new ChartFrame("File Size Histogram segments", chart2);
         frame2.pack();
-        System.out.println("end");
         frame2.setVisible(true);
 
         try {
             ChartUtils.saveChartAsPNG(new File("histogram.png"), chart, 1920, 1080);
             ChartUtils.saveChartAsPNG(new File("histogram2.png"), chart2, 1920, 1080);
-            System.out.println("photo");
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -81,11 +78,9 @@ public class HistogramBuilder {
     private static void configurateDataSet(DefaultCategoryDataset dataSet, DefaultCategoryDataset dataSetInterval, Map<Long, Integer> sizeDistribution) {
 
         Integer sum = sizeDistribution.values().stream().parallel().mapToInt(Integer::intValue).sum();
-        System.out.println(sum);
         List<Long> boundariesOfIntervals = new ArrayList<>();
         int j = 20;
-        Integer max = new Integer(0);
-        Long maxKey = new Long(0);
+        Integer max = 0;
 
         for(int i =0; i < j; i++)
             boundariesOfIntervals.add(10000l*i);
@@ -99,7 +94,6 @@ public class HistogramBuilder {
             if(a.getValue()> max)
             {
                 max = value;
-                maxKey = a.getKey();
             }
 
             if(a.getKey()<=boundariesOfIntervals.get(i)) sumOnInterval+=v;
@@ -113,7 +107,6 @@ public class HistogramBuilder {
             }
             dataSet.setValue(v * 100, "File Size", String.valueOf(a.getKey()));
         }
-            System.out.println(max+" "+maxKey);
     }
 
 
